@@ -5,15 +5,16 @@ import urllib2
 import time
 
 
-class Client(object):
+class RestClient(object):
 
-    def __init__(self, server, user, password, api_root):
+    apt_root = None
+
+    def __init__(self, server, user, password):
         self.server = server
         self.user = user
         self.password = password
         self.keys = {}
         self.connected = False
-        self.api_root = api_root
 
     def authenticate(self, realm, uri):
         auth_handler = urllib2.HTTPBasicAuthHandler()
@@ -38,6 +39,7 @@ class Client(object):
     def connect(self):
         self.authenticate("", self.server)
         self.connected = True
+        result = None
         try:
             result = self.open_server_url(self.api_root).read()
             return json.loads(result)
@@ -50,3 +52,15 @@ class Client(object):
         if 'Location' not in result.headers:
             raise exception
         return urlparse(result.headers['Location']).path
+
+
+class RobotClient(RestClient):
+
+    api_root = '/leaf_api/v1'
+
+    def robots(self):
+        if not self.connected:
+            self.connect()
+        data = json.loads(self.open_server_url(self.api_root + '/robot/?limit=0').read())
+        assert 'objects' in data
+        return map(lambda o: o['uuid'], data['objects'])
