@@ -64,3 +64,11 @@ class RobotClient(RestClient):
         data = json.loads(self.open_server_url(self.api_root + '/robot/?limit=0').read())
         assert 'objects' in data
         return map(lambda o: o['uuid'], data['objects'])
+
+    def get_config(self, robot):
+        if not self.connected:
+            self.connect()
+        data = json.loads(self.open_server_url(self.api_root + '/configuration/?limit=0&robot={0}'.format(robot)).read())
+        assert 'objects' in data
+        return map(lambda o: o['config_line'], data['objects'])
+
