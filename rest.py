@@ -25,15 +25,21 @@ class RestClient(object):
 
         self.opener = urllib2.build_opener(auth_handler)
 
-    def open_server_url(self, url, data=None):
+    def open_server_url(self, url, data=None, authorization=None):
         url = "{0}{1}".format(self.server, url)
         req = urllib2.Request(url=url, data=data)
         if data:
             req.add_header('Content-Type', 'application/json')
+        if authorization:
+            req.add_header('AUTHORIZATION_KEY',authorization)
         return self.opener.open(req)
 
-    def open_url(self, url, data=None):
+    def open_url(self, url, data=None, authorization=None):
         req = urllib2.Request(url=url, data=data)
+        if data:
+            req.add_header('Content-Type', 'application/json')
+        if authorization:
+            req.add_header('AUTHORIZATION_KEY',authorization)
         return self.opener.open(req)
 
     def connect(self):
@@ -57,11 +63,12 @@ class RestClient(object):
 class RobotClient(RestClient):
 
     api_root = '/leaf_api/v1'
+    authorization = 'c5a69900b98f874e9d01532a78da2291642eabe72de5d3338b8c01ba1d52e0e7'
 
     def robots(self):
         if not self.connected:
             self.connect()
-        data = json.loads(self.open_server_url(self.api_root + '/robot/?limit=0').read())
+        data = json.loads(self.open_server_url(self.api_root + '/robot/?limit=0', authorization=self.authorization).read())
         assert 'objects' in data
         return map(lambda o: o['uuid'], data['objects'])
 
