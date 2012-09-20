@@ -9,6 +9,7 @@ from IPython.frontend.terminal.interactiveshell import TerminalInteractiveShell
 from IPython.frontend.terminal.ipapp import load_default_config
 import tempfile
 import os
+import json
 
 _client = RobotClient(SERVER, USER, PASS)
 
@@ -18,28 +19,31 @@ class RobotMagics(Magics):
 
     @line_magic
     def robots(self, _=''):
-        print "\n".join(_client.robots())
+        for uuid, alias in _client.robots_aliases():
+            if alias:
+                print "{0} <{1}>".format(uuid, alias)
+            else:
+                print uuid
 
     @line_magic
-    def get_config(self, s=''):
-        print "\n".join(_client.get_config(s))
+    def get_data(self, s=''):
+        print json.dumps(_client.get_data(s), indent=4, sort_keys=True)
 
     @line_magic
-    def edit_config(self, s=''):
-        config =  "\n".join(_client.get_config(s))
-        f, name = tempfile.mkstemp()
-        os.write(f,config)
-        os.close(f)
-        self.shell.hooks.editor(name,1)
-        with open(name) as f:
-            new_config = f.read()
-        print new_config
-        os.unlink(name)
+    def set_alias(self, s=''):
+        robot, _, alias = s.partition(' ')
+        _client.set_alias(robot, alias)
+
+    @line_magic
+    def create_robot(self, s=''):
+        print _client.create_robot()
 
 
-
-def _get_config_completer(*args, **kwargs):
-    return _client.robots()
+def _get_robot_completer(*args, **kwargs):
+    robots = []
+    robots.extend(_client.robots())
+    robots.extend(_client.aliases.keys())
+    return robots
 
 
 class CliInteractiveShellEmbed(InteractiveShellEmbed):
@@ -50,8 +54,8 @@ class CliInteractiveShellEmbed(InteractiveShellEmbed):
 
     def init_completer(self):
         super(CliInteractiveShellEmbed, self).init_completer()
-        self.set_hook('complete_command', _get_config_completer, str_key='%get_config')
-        self.set_hook('complete_command', _get_config_completer, str_key='%edit_config')
+        self.set_hook('complete_command', _get_robot_completer, str_key='%get_data')
+        self.set_hook('complete_command', _get_robot_completer, str_key='%set_alias')
 
 
 if __name__ == "__main__":

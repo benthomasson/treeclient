@@ -4,6 +4,34 @@ from urlparse import urlparse
 import urllib2
 import time
 
+PUT = "PUT"
+POST = "POST"
+PATCH = "PATCH"
+X_HTTP_METHOD_OVERRIDE = 'X-HTTP-Method-Override'
+
+
+class RequestWithMethod(urllib2.Request):
+
+    def __init__(self, *args, **kwargs):
+        self._method = kwargs.get('method', None)
+        headers = kwargs.get('headers', {})
+        if 'method' in kwargs:
+            del kwargs['method']
+        if self._method == PUT:
+            self._method = POST
+            headers[X_HTTP_METHOD_OVERRIDE] = PUT
+        if self._method == PATCH:
+            self._method = POST
+            headers[X_HTTP_METHOD_OVERRIDE] = PATCH
+        if headers:
+            kwargs['headers'] = headers
+        urllib2.Request.__init__(self, *args, **kwargs)
+
+    def get_method(self):
+        if self._method:
+            return self._method
+        else:
+            return urllib2.Request.get_method(self)
 
 class RestClient(object):
 
@@ -25,17 +53,17 @@ class RestClient(object):
 
         self.opener = urllib2.build_opener(auth_handler)
 
-    def open_server_url(self, url, data=None, authorization=None):
+    def open_server_url(self, url, data=None, authorization=None, method=None):
         url = "{0}{1}".format(self.server, url)
-        req = urllib2.Request(url=url, data=data)
+        req = RequestWithMethod(url=url, data=data, method=method)
         if data:
             req.add_header('Content-Type', 'application/json')
         if authorization:
             req.add_header('AUTHORIZATION_KEY',authorization)
         return self.opener.open(req)
 
-    def open_url(self, url, data=None, authorization=None):
-        req = urllib2.Request(url=url, data=data)
+    def open_url(self, url, data=None, authorization=None, method=None):
+        req = RequestWithMethod(url=url, data=data, method=method)
         if data:
             req.add_header('Content-Type', 'application/json')
         if authorization:
@@ -65,6 +93,10 @@ class RobotClient(RestClient):
     api_root = '/leaf_api/v1'
     authorization = 'c5a69900b98f874e9d01532a78da2291642eabe72de5d3338b8c01ba1d52e0e7'
 
+    def __init__(self, *args, **kwargs):
+        super(RobotClient, self).__init__(*args, **kwargs)
+        self.aliases = dict()
+
     def robots(self):
         if not self.connected:
             self.connect()
@@ -72,10 +104,36 @@ class RobotClient(RestClient):
         assert 'objects' in data
         return map(lambda o: o['uuid'], data['objects'])
 
-    def get_config(self, robot):
+    def robots_aliases(self):
         if not self.connected:
             self.connect()
-        data = json.loads(self.open_server_url(self.api_root + '/configuration/?limit=0&robot={0}'.format(robot)).read())
+        data = json.loads(self.open_server_url(self.api_root + '/robot/?limit=0', authorization=self.authorization).read())
         assert 'objects' in data
-        return map(lambda o: o['config_line'], data['objects'])
+        aliases = map(lambda o: (o['uuid'], o['alias']), data['objects'])
+        def first(x):
+            return x[0]
+        def swap(x):
+            return x[1], x[0]
+        self.aliases = dict(filter(first,map(swap,aliases)))
+        return aliases
 
+    def set_alias(self, robot, alias):
+        if not self.connected:
+            self.connect()
+        data = dict(uuid=robot, alias=alias)
+        result = self.open_server_url(self.api_root + '/robot/{0}/'.format(robot), data=json.dumps(data), authorization=self.authorization, method='PUT')
+
+    def get_data(self, robot):
+        if not self.connected:
+            self.connect()
+        if robot in self.aliases:
+            robot = self.aliases[robot]
+        data = json.loads(self.open_server_url(self.api_root + '/robot/{0}/'.format(robot), authorization=self.authorization).read())
+        return data
+
+    def create_robot(self):
+        if not self.connected:
+            self.connect()
+        data = dict()
+        result = self.open_server_url(self.api_root + '/robot/', data=json.dumps(data), authorization=self.authorization)
+        return self.extract_location(result, Exception('Could not create robot'))
