@@ -26,6 +26,11 @@ class RobotMagics(Magics):
                 print uuid
 
     @line_magic
+    def abilities(self, _=''):
+        for name in _client.abilities():
+            print name
+
+    @line_magic
     def get_data(self, s=''):
         print json.dumps(_client.get_data(s), indent=4, sort_keys=True)
 
@@ -38,12 +43,31 @@ class RobotMagics(Magics):
     def create_robot(self, s=''):
         print _client.create_robot()
 
+    @line_magic
+    def task(self, s=''):
+        robot, _, task = s.partition(' ')
+        if task in _client.abilities():
+            print robot, 'will do', task
+        else:
+            print 'No such ability'
 
-def _get_robot_completer(*args, **kwargs):
+
+def _get_robot_completer(self, event):
     robots = []
     robots.extend(_client.robots())
     robots.extend(_client.aliases.keys())
     return robots
+
+def _get_robot_ability_completer(self, event):
+    args = event.line.split(' ')
+    args = args[1:]
+    options = []
+    if len(args) == 1:
+        options.extend(_client.robots())
+        options.extend(_client.aliases.keys())
+    if len(args) == 2:
+        options.extend(_client.abilities())
+    return options
 
 
 class CliInteractiveShellEmbed(InteractiveShellEmbed):
@@ -56,6 +80,7 @@ class CliInteractiveShellEmbed(InteractiveShellEmbed):
         super(CliInteractiveShellEmbed, self).init_completer()
         self.set_hook('complete_command', _get_robot_completer, str_key='%get_data')
         self.set_hook('complete_command', _get_robot_completer, str_key='%set_alias')
+        self.set_hook('complete_command', _get_robot_ability_completer, str_key='%task')
 
 
 if __name__ == "__main__":

@@ -104,6 +104,13 @@ class RobotClient(RestClient):
         assert 'objects' in data
         return map(lambda o: o['uuid'], data['objects'])
 
+    def abilities(self):
+        if not self.connected:
+            self.connect()
+        data = json.loads(self.open_server_url(self.api_root + '/ability/?limit=0', authorization=self.authorization).read())
+        assert 'objects' in data
+        return map(lambda o: o['name'], data['objects'])
+
     def robots_aliases(self):
         if not self.connected:
             self.connect()
