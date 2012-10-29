@@ -45,6 +45,11 @@ class RobotMagics(Magics):
 
     @line_magic
     def task(self, s=''):
+        """Schedule a task on a certain robot.
+        Example: 
+
+        >>>%task test create_robot
+        """
         robot, _, task = s.partition(' ')
         if task in _client.abilities():
             print robot, 'will do', task

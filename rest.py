@@ -91,7 +91,7 @@ class RestClient(object):
 class RobotClient(RestClient):
 
     api_root = '/leaf_api/v1'
-    authorization = 'c5a69900b98f874e9d01532a78da2291642eabe72de5d3338b8c01ba1d52e0e7'
+    authorization = 'dda672f828fa6fc0949f4eb7340d2208830cd057d49cf2e53f404eebd562359c'
 
     def __init__(self, *args, **kwargs):
         super(RobotClient, self).__init__(*args, **kwargs)
@@ -100,7 +100,7 @@ class RobotClient(RestClient):
     def robots(self):
         if not self.connected:
             self.connect()
-        data = json.loads(self.open_server_url(self.api_root + '/robot/?limit=0', authorization=self.authorization).read())
+        data = json.loads(self.open_server_url(self.api_root + '/robot2/?limit=0', authorization=self.authorization).read())
         assert 'objects' in data
         return map(lambda o: o['uuid'], data['objects'])
 
@@ -114,7 +114,7 @@ class RobotClient(RestClient):
     def robots_aliases(self):
         if not self.connected:
             self.connect()
-        data = json.loads(self.open_server_url(self.api_root + '/robot/?limit=0', authorization=self.authorization).read())
+        data = json.loads(self.open_server_url(self.api_root + '/robot2/?limit=0', authorization=self.authorization).read())
         assert 'objects' in data
         aliases = map(lambda o: (o['uuid'], o['alias']), data['objects'])
         def first(x):
@@ -128,19 +128,19 @@ class RobotClient(RestClient):
         if not self.connected:
             self.connect()
         data = dict(uuid=robot, alias=alias)
-        result = self.open_server_url(self.api_root + '/robot/{0}/'.format(robot), data=json.dumps(data), authorization=self.authorization, method='PUT')
+        result = self.open_server_url(self.api_root + '/robot2/{0}/'.format(robot), data=json.dumps(data), authorization=self.authorization, method='PUT')
 
     def get_data(self, robot):
         if not self.connected:
             self.connect()
         if robot in self.aliases:
             robot = self.aliases[robot]
-        data = json.loads(self.open_server_url(self.api_root + '/robot/{0}/'.format(robot), authorization=self.authorization).read())
+        data = json.loads(self.open_server_url(self.api_root + '/robot2/{0}/'.format(robot), authorization=self.authorization).read())
         return data
 
     def create_robot(self):
         if not self.connected:
             self.connect()
         data = dict()
-        result = self.open_server_url(self.api_root + '/robot/', data=json.dumps(data), authorization=self.authorization)
+        result = self.open_server_url(self.api_root + '/robot2/', data=json.dumps(data))
         return self.extract_location(result, Exception('Could not create robot'))
