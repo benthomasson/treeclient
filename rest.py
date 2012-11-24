@@ -115,13 +115,16 @@ class RobotClient(RestClient):
         if not self.connected:
             self.connect()
         data = json.loads(self.open_server_url(self.api_root + '/robot2/?limit=0', authorization=self.authorization).read())
+        print json.dumps(data, indent=4, sort_keys=True)
         assert 'objects' in data
         aliases = map(lambda o: (o['uuid'], o['alias']), data['objects'])
+        print aliases
         def first(x):
             return x[0]
         def swap(x):
             return x[1], x[0]
         self.aliases = dict(filter(first,map(swap,aliases)))
+        print self.aliases
         return aliases
 
     def set_alias(self, robot, alias):
@@ -141,6 +144,6 @@ class RobotClient(RestClient):
     def create_robot(self):
         if not self.connected:
             self.connect()
-        data = dict()
-        result = self.open_server_url(self.api_root + '/robot2/', data=json.dumps(data))
+        data = dict(authorization=self.authorization)
+        result = self.open_server_url(self.api_root + '/robot2/', data=json.dumps(data), authorization=self.authorization)
         return self.extract_location(result, Exception('Could not create robot'))
