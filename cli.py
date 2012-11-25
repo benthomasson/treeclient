@@ -26,6 +26,18 @@ class RobotMagics(Magics):
                 print uuid
 
     @line_magic
+    def tasks(self, s=''):
+        if s:
+            robot = s
+        else:
+            robot = None
+        for task in _client.tasks(robot):
+            robot = task['robot']
+            if robot in _client.reverse_aliases:
+                robot = _client.reverse_aliases[robot]
+            print robot, task['name'], task['status'], task['result']
+
+    @line_magic
     def abilities(self, _=''):
         for name in _client.abilities():
             print name
@@ -53,6 +65,7 @@ class RobotMagics(Magics):
         robot, _, task = s.partition(' ')
         if task in _client.abilities():
             print robot, 'will do', task
+            _client.new_task(robot, task)
         else:
             print 'No such ability'
 
@@ -86,6 +99,7 @@ class CliInteractiveShellEmbed(InteractiveShellEmbed):
         self.set_hook('complete_command', _get_robot_completer, str_key='%get_data')
         self.set_hook('complete_command', _get_robot_completer, str_key='%set_alias')
         self.set_hook('complete_command', _get_robot_ability_completer, str_key='%task')
+        self.set_hook('complete_command', _get_robot_completer, str_key='%tasks')
 
 
 if __name__ == "__main__":

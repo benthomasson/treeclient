@@ -33,6 +33,7 @@ class RequestWithMethod(urllib2.Request):
         else:
             return urllib2.Request.get_method(self)
 
+
 class RestClient(object):
 
     apt_root = None
@@ -59,7 +60,7 @@ class RestClient(object):
         if data:
             req.add_header('Content-Type', 'application/json')
         if authorization:
-            req.add_header('AUTHORIZATION_KEY',authorization)
+            req.add_header('AUTHORIZATION_KEY', authorization)
         return self.opener.open(req)
 
     def open_url(self, url, data=None, authorization=None, method=None):
@@ -67,7 +68,7 @@ class RestClient(object):
         if data:
             req.add_header('Content-Type', 'application/json')
         if authorization:
-            req.add_header('AUTHORIZATION_KEY',authorization)
+            req.add_header('AUTHORIZATION_KEY', authorization)
         return self.opener.open(req)
 
     def connect(self):
@@ -96,6 +97,12 @@ class RobotClient(RestClient):
     def __init__(self, *args, **kwargs):
         super(RobotClient, self).__init__(*args, **kwargs)
         self.aliases = dict()
+        self.reverse_aliases = dict()
+
+    def lookup_alias(self, robot):
+        if robot in self.aliases:
+            robot = self.aliases[robot]
+        return robot
 
     def robots(self):
         if not self.connected:
@@ -105,11 +112,26 @@ class RobotClient(RestClient):
         return map(lambda o: o['uuid'], data['objects'])
 
     def abilities(self):
+        return ['hello']
         if not self.connected:
             self.connect()
         data = json.loads(self.open_server_url(self.api_root + '/ability/?limit=0', authorization=self.authorization).read())
         assert 'objects' in data
         return map(lambda o: o['name'], data['objects'])
+
+    def tasks(self, robot=None):
+        if not self.connected:
+            self.connect()
+        robot_filter = ""
+        if robot:
+            robot = self.lookup_alias(robot)
+            robot_filter = "&robot={0}".format(robot)
+        query ='/task/?limit=0{0}'.format(robot_filter)
+        print query
+        data = json.loads(self.open_server_url(self.api_root + query , authorization=self.authorization).read())
+        assert 'objects' in data
+        return data['objects']
+
 
     def robots_aliases(self):
         if not self.connected:
@@ -119,11 +141,14 @@ class RobotClient(RestClient):
         assert 'objects' in data
         aliases = map(lambda o: (o['uuid'], o['alias']), data['objects'])
         print aliases
+
         def first(x):
             return x[0]
+
         def swap(x):
             return x[1], x[0]
-        self.aliases = dict(filter(first,map(swap,aliases)))
+        self.aliases = dict(filter(first, map(swap, aliases)))
+        self.reverse_aliases = dict(map(swap, self.aliases.iteritems()))
         print self.aliases
         return aliases
 
@@ -136,8 +161,7 @@ class RobotClient(RestClient):
     def get_data(self, robot):
         if not self.connected:
             self.connect()
-        if robot in self.aliases:
-            robot = self.aliases[robot]
+        robot = self.lookup_alias(robot)
         data = json.loads(self.open_server_url(self.api_root + '/robot2/{0}/'.format(robot), authorization=self.authorization).read())
         return data
 
@@ -147,3 +171,11 @@ class RobotClient(RestClient):
         data = dict(authorization=self.authorization)
         result = self.open_server_url(self.api_root + '/robot2/', data=json.dumps(data), authorization=self.authorization)
         return self.extract_location(result, Exception('Could not create robot'))
+
+    def new_task(self, robot, name):
+        if not self.connected:
+            self.connect()
+        robot = self.lookup_alias(robot)
+        data = dict(authorization=self.authorization, name=name, robot=robot)
+        result = self.open_server_url(self.api_root + '/task/', data=json.dumps(data), authorization=self.authorization)
+        return self.extract_location(result, Exception('Could not create task'))
